@@ -9,9 +9,20 @@ using Hono.js.
 -   Avoids head-of-line blocking: if a model hits its limits, only that model waits; others proceed
 -   Two main endpoints:
     -   `/ask` - Chat with Mistral AI using conversation history
-    -   `/analyze-image` - Analyze images using Mistral's vision capabilities
+    -   `/analyze-image` - Analyze images using llm's vision capabilities
     -   `/usage` - Current per-queue, per-model usage for day and month
 -   Built with TypeScript, Hono.js, and provider SDKs (Mistral, Gemini)
+
+## Roadmap
+
+-   **Streaming Support**: Implement streaming for chat endpoints to provide real-time, token-by-token responses, improving user experience for interactive applications.
+-   **Expand Provider Support**: Integrate additional AI providers like OpenAI (GPT models), Anthropic (Claude models), and more to increase the flexibility of the service.
+-   **Caching Layer**: Introduce an optional caching mechanism (e.g., using Redis, RAM or even PocketBase) to store and serve responses for identical requests, reducing latency and costs.
+-   **Request Prioritization**: Add a priority field to requests, allowing high-priority tasks to be processed ahead of others in the queue.
+-   **Advanced Observability**: Integrate with monitoring tools like Prometheus or OpenTelemetry to export detailed metrics on queue length, request latency, token usage, and error rates per model and provider.
+-   **Cost Tracking**: Add functionality to estimate and track the cost of requests based on model pricing, exposing this data through the `/usage` endpoint.
+-   **Embeddings Endpoint**: Create a new `/embed` endpoint to support text embedding generation, a common use case for many AI applications.
+-   **UI Dashboard**: Develop a simple web interface to visualize queue status, usage statistics, and model availability in real-time.
 
 ## Setup
 
@@ -33,9 +44,10 @@ cp .env.example .env
 
 Select via `ENV_STRATEGY` (default: `env`).
 
--   env: Read the Mistral key directly from `.env`.
+-   env: Read the llm provider key directly from `.env`.
 
     -   MISTRAL_API_KEY=your_actual_api_key_here
+    -   GEMINI_API_KEY=your_actual_api_key_here
 
 -   pocketbase: Authenticate to pocketbase and read a key from a collection.
 
@@ -44,12 +56,10 @@ Select via `ENV_STRATEGY` (default: `env`).
     -   PB_PASSWORD=your_password
     -   PB_USER_COLLECTION=users (default)
     -   PB_KEYS_COLLECTIONS=keys (default)
-    -   ENV_KEY_NAME=mistral (optional preferred key name)
 
 -   fetch: Fetch a list of keys from an HTTP endpoint returning `[ { name, key } ]`.
     -   ENV_FETCH_URL=https://example.com/keys.json
     -   ENV_FETCH_TOKEN=optional_bearer_token
-    -   ENV_KEY_NAME=mistral (optional preferred key name)
 
 ### Gemini provider (optional)
 
@@ -121,7 +131,7 @@ http://localhost:3000
 
 ### POST `/ask`
 
-**Description:** Send a chat request with conversation history to Mistral AI. Requests are queued and processed sequentially.
+**Description:** Send a chat request with conversation history to AI Queuer. Requests are queued and processed sequentially.
 
 **Request Body:**
 
@@ -154,7 +164,7 @@ http://localhost:3000
 -   `history` (array, required): Array of conversation messages
     -   `role` (string, required): Message role - must be "user", "assistant", or "system"
     -   `content` (string, required): Message content
--   `model` (string, required): Mistral model to use (e.g., "mistral-large-latest", "mistral-medium", "mistral-small")
+-   `model` (string, required): model to use.
 
 **Success Response (200):**
 
@@ -211,7 +221,7 @@ _500 Internal Server Error:_
 
 ### POST `/analyze-image`
 
-**Description:** Analyze an image using Mistral's vision capabilities. Accepts base64-encoded images.
+**Description:** Analyze an image using llm's vision capabilities. Accepts base64-encoded images.
 
 **Request Body:**
 
