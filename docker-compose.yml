@@ -1,0 +1,32 @@
+services:
+  ai-queuer:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: ai-queuer-app
+    ports:
+      - "${PORT:-3000}:3000"
+    environment:
+      - NODE_ENV=production
+      - PORT=3000
+    env_file:
+      - .env
+    restart: unless-stopped
+    # healthcheck:
+    # test:
+    #   [
+    #     "CMD",
+    #     "node",
+    #     "-e",
+    #     "require('http').get('http://localhost:3000/health', (res) => { process.exit(res.statusCode === 200 ? 0 : 1) })",
+    #   ]
+    # interval: 7200s
+    # timeout: 10s
+    # retries: 3
+    # start_period: 40s
+    networks:
+      - mistral-network
+
+networks:
+  mistral-network:
+    driver: bridge
