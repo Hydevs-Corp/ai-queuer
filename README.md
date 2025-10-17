@@ -15,14 +15,18 @@ using Hono.js.
 
 ## Roadmap
 
--   **Streaming Support**: Implement streaming for chat endpoints to provide real-time, token-by-token responses, improving user experience for interactive applications.
--   **Expand Provider Support**: Integrate additional AI providers like OpenAI (GPT models), Anthropic (Claude models), and more to increase the flexibility of the service.
--   **Caching Layer**: Introduce an optional caching mechanism (e.g., using Redis, RAM or even PocketBase) to store and serve responses for identical requests, reducing latency and costs.
--   **Request Prioritization**: Add a priority field to requests, allowing high-priority tasks to be processed ahead of others in the queue.
--   **Advanced Observability**: Integrate with monitoring tools like Prometheus or OpenTelemetry to export detailed metrics on queue length, request latency, token usage, and error rates per model and provider.
--   **Cost Tracking**: Add functionality to estimate and track the cost of requests based on model pricing, exposing this data through the `/usage` endpoint.
--   **Embeddings Endpoint**: Create a new `/embed` endpoint to support text embedding generation, a common use case for many AI applications.
--   **UI Dashboard**: Develop a simple web interface to visualize queue status, usage statistics, and model availability in real-time.
+1.  **Expand Provider Support**: Integrate additional AI providers like OpenAI (GPT models), Anthropic (Claude models), and more to increase the flexibility of the service.
+2.  **Customizable Queue Policies**: Allow users to define custom queue policies, such as maximum wait times or retry strategies for failed requests.
+3.  **Request Prioritization**: Add a priority field to requests, allowing high-priority tasks to be processed ahead of others in the queue.
+4.  **Image Generation Support**: Add endpoints for image generation tasks using models that support this functionality.
+5.  **UI Dashboard**: Develop a simple web interface to visualize queue status, usage statistics, and model availability in real-time.
+6.  **Authentication & Authorization**: Implement API key-based authentication to restrict access to the service and manage user-specific quotas.
+7.  **Streaming Support**: Implement streaming for chat endpoints to provide real-time, token-by-token responses, improving user experience for interactive applications.
+8.  **Caching Layer**: Introduce an optional caching mechanism (e.g., using Redis, RAM or even PocketBase) to store and serve responses for identical requests, reducing latency and costs.
+9.  **Embeddings Endpoint**: Create a new `/embed` endpoint to support text embedding generation, a common use case for many AI applications.
+10. **Enhanced Error Handling**: Improve error handling and reporting, providing more detailed feedback on request failures and potential remediation steps.
+11. **Advanced Observability**: Integrate with monitoring tools like Prometheus or OpenTelemetry to export detailed metrics on queue length, request latency, token usage, and error rates per model and provider.
+12. **Cost Tracking**: Add functionality to estimate and track the cost of requests based on model pricing, exposing this data through the `/usage` endpoint.
 
 ## Setup
 
