@@ -1,10 +1,10 @@
-import { serve } from "@hono/node-server";
-import * as dotenv from "dotenv";
-import { Hono } from "hono";
-import { cors } from "hono/cors";
-import { logger } from "hono/logger";
+import { serve } from '@hono/node-server';
+import * as dotenv from 'dotenv';
+import { Hono } from 'hono';
+import { cors } from 'hono/cors';
+import { logger } from 'hono/logger';
 
-import { estimateTokenCount } from "tokenx";
+import { estimateTokenCount } from 'tokenx';
 import {
     getEnvStrategy,
     getPort,
@@ -12,31 +12,31 @@ import {
     resolveGeminiKeyConfigs,
     resolveMistralApiKey,
     resolveMistralKeyConfigs,
-} from "./env";
-import { GeminiService } from "./gemini-service";
-import { MistralService } from "./mistral-service";
-import { RequestQueuer } from "./queuer";
+} from './env';
+import { GeminiService } from './gemini-service';
+import { MistralService } from './mistral-service';
+import { RequestQueuer } from './queuer';
 import {
     AnalyzeImageRequestBody,
     AskRequestBody,
     LLMService,
     ModelTarget,
     ProviderName,
-} from "./types";
+} from './types';
 
 dotenv.config({ quiet: true });
 
 const app = new Hono();
 
-app.use("*", cors());
-app.use("*", logger());
+app.use('*', cors());
+app.use('*', logger());
 
 const queuesByProvider: Record<string, RequestQueuer[]> = {};
 const clientsByProvider: Record<string, LLMService[]> = {};
 const QUEUE_DELAY_MS = 1000;
-const USAGE_STRATEGY = (process.env.USAGE_STRATEGY || "RAM") as
-    | "RAM"
-    | "pocketbase";
+const USAGE_STRATEGY = (process.env.USAGE_STRATEGY || 'RAM') as
+    | 'RAM'
+    | 'pocketbase';
 
 function getLeastLoadedIndex(queues: RequestQueuer[]): number {
     if (!queues || queues.length === 0) return -1;
@@ -54,12 +54,12 @@ function getLeastLoadedIndex(queues: RequestQueuer[]): number {
 
 function parseTargets<T extends { model?: any }>(
     body: T,
-    fallbackProvider: ProviderName = "mistral"
+    fallbackProvider: ProviderName = 'mistral'
 ): ModelTarget[] {
     const raw = (body as any).model;
     if (!raw)
-        return [{ provider: fallbackProvider, model: "mistral-small-latest" }];
-    if (typeof raw === "string")
+        return [{ provider: fallbackProvider, model: 'mistral-small-latest' }];
+    if (typeof raw === 'string')
         return [{ provider: fallbackProvider, model: raw }];
     if (Array.isArray(raw)) return raw as ModelTarget[];
     return [raw as ModelTarget];
@@ -87,7 +87,7 @@ function chooseQueue(
     let tokensNeeded = 0;
     try {
         if (tokenText) {
-            const { estimateTokenCount } = require("tokenx");
+            const { estimateTokenCount } = require('tokenx');
             tokensNeeded = estimateTokenCount(tokenText);
         }
     } catch {}
@@ -114,9 +114,9 @@ function chooseQueue(
     };
 }
 
-app.get("/", (c) => {
+app.get('/', (c) => {
     return c.json({
-        message: "AI Queuer API is running",
+        message: 'AI Queuer API is running',
         providers: Object.entries(queuesByProvider).reduce(
             (acc, [prov, qs]) => ({
                 ...acc,
@@ -126,42 +126,42 @@ app.get("/", (c) => {
         ),
         docs: {
             ask: {
-                method: "POST",
-                url: "/ask",
+                method: 'POST',
+                url: '/ask',
                 description:
                     "Ask a question to the AI model. Provide 'history' in the request body.",
             },
             analyzeImage: {
-                method: "POST",
-                url: "/analyze-image",
+                method: 'POST',
+                url: '/analyze-image',
                 description:
                     "Analyze a base64-encoded image. Provide 'image' in the request body.",
             },
             queueStatus: {
-                method: "GET",
-                url: "/queue/status",
-                description: "Get the status of all provider queues.",
+                method: 'GET',
+                url: '/queue/status',
+                description: 'Get the status of all provider queues.',
             },
             usage: {
-                method: "GET",
-                url: "/usage",
-                description: "Get usage statistics for all queues and models.",
+                method: 'GET',
+                url: '/usage',
+                description: 'Get usage statistics for all queues and models.',
             },
             models: {
-                method: "GET",
-                url: "/models",
-                description: "List available models for each provider.",
+                method: 'GET',
+                url: '/models',
+                description: 'List available models for each provider.',
             },
             estimateTokens: {
-                method: "GET",
-                url: "/estimate-tokens?text=Your+text+here",
+                method: 'GET',
+                url: '/estimate-tokens?text=Your+text+here',
                 description:
-                    "Estimate the number of tokens for a given text and model.",
+                    'Estimate the number of tokens for a given text and model.',
             },
             reloadKeys: {
-                method: "POST",
-                url: "/admin/reload-keys",
-                description: "Reload API keys for providers.",
+                method: 'POST',
+                url: '/admin/reload-keys',
+                description: 'Reload API keys for providers.',
             },
         },
         environment: {
@@ -171,15 +171,15 @@ app.get("/", (c) => {
     });
 });
 
-app.get("/health", (c) => c.text("OK"));
+app.get('/health', (c) => c.text('OK'));
 
-app.post("/ask", async (c) => {
+app.post('/ask', async (c) => {
     try {
         const body = (await c.req.json()) as AskRequestBody;
 
         if (!body.history || !Array.isArray(body.history)) {
             return c.json(
-                { error: "history is required and must be an array" },
+                { error: 'history is required and must be an array' },
                 400
             );
         }
@@ -187,23 +187,23 @@ app.post("/ask", async (c) => {
         for (const message of body.history) {
             if (
                 !message.role ||
-                !["user", "assistant", "system"].includes(message.role)
+                !['user', 'assistant', 'system'].includes(message.role)
             ) {
                 return c.json(
                     {
-                        error: "Invalid message role. Must be user, assistant, or system",
+                        error: 'Invalid message role. Must be user, assistant, or system',
                     },
                     400
                 );
             }
-            if (!message.content || typeof message.content !== "string") {
+            if (!message.content || typeof message.content !== 'string') {
                 return c.json(
-                    { error: "Each message must have content as a string" },
+                    { error: 'Each message must have content as a string' },
                     400
                 );
             }
         }
-        const tokenText = body.history.map((m) => m.content).join("\n");
+        const tokenText = body.history.map((m) => m.content).join('\n');
         let best: {
             provider: ProviderName;
             model: string;
@@ -226,9 +226,13 @@ app.post("/ask", async (c) => {
         }
         if (!best)
             throw new Error(
-                "No available provider queues. Service not initialized"
+                'No available provider queues. Service not initialized'
             );
-        const req = { history: body.history, model: best.model };
+        const req = {
+            history: body.history,
+            model: best.model,
+            options: body?.options,
+        };
         const result = await best.queue.add(
             async () => await best!.client.askQuestion(req),
             tokenText,
@@ -252,32 +256,32 @@ app.post("/ask", async (c) => {
             ),
         });
     } catch (error) {
-        console.error("Error in /ask endpoint:", error);
+        console.error('Error in /ask endpoint:', error);
         return c.json(
             {
-                error: "Internal server error",
+                error: 'Internal server error',
                 details:
-                    error instanceof Error ? error.message : "Unknown error",
+                    error instanceof Error ? error.message : 'Unknown error',
             },
             500
         );
     }
 });
 
-app.post("/analyze-image", async (c) => {
+app.post('/analyze-image', async (c) => {
     try {
         const body = (await c.req.json()) as AnalyzeImageRequestBody;
 
-        if (!body.image || typeof body.image !== "string") {
+        if (!body.image || typeof body.image !== 'string') {
             return c.json(
-                { error: "image is required and must be a base64 string" },
+                { error: 'image is required and must be a base64 string' },
                 400
             );
         }
 
         const base64Regex = /^[A-Za-z0-9+/]*={0,2}$/;
         if (!base64Regex.test(body.image)) {
-            return c.json({ error: "Invalid base64 image format" }, 400);
+            return c.json({ error: 'Invalid base64 image format' }, 400);
         }
 
         const originalModelRaw = (body as any).model;
@@ -285,16 +289,16 @@ app.post("/analyze-image", async (c) => {
             ? parseTargets(body)
             : [
                   {
-                      provider: "mistral" as ProviderName,
-                      model: "magistral-small-2509",
+                      provider: 'mistral' as ProviderName,
+                      model: 'magistral-small-2509',
                   },
               ];
         const prompt =
             body.prompt &&
-            typeof body.prompt === "string" &&
+            typeof body.prompt === 'string' &&
             body.prompt.trim().length
                 ? body.prompt
-                : "Analyze this image and describe what you see.";
+                : 'Analyze this image and describe what you see.';
         let best: {
             provider: ProviderName;
             model: string;
@@ -317,7 +321,7 @@ app.post("/analyze-image", async (c) => {
         }
         if (!best)
             throw new Error(
-                "No available provider queues. Service not initialized"
+                'No available provider queues. Service not initialized'
             );
         const req = {
             image: body.image,
@@ -346,19 +350,19 @@ app.post("/analyze-image", async (c) => {
             ),
         });
     } catch (error) {
-        console.error("Error in /analyze-image endpoint:", error);
+        console.error('Error in /analyze-image endpoint:', error);
         return c.json(
             {
-                error: "Internal server error",
+                error: 'Internal server error',
                 details:
-                    error instanceof Error ? error.message : "Unknown error",
+                    error instanceof Error ? error.message : 'Unknown error',
             },
             500
         );
     }
 });
 
-app.get("/queue/status", (c) => {
+app.get('/queue/status', (c) => {
     const providers = Object.fromEntries(
         Object.entries(queuesByProvider).map(([prov, qs]) => [
             prov,
@@ -379,7 +383,7 @@ app.get("/queue/status", (c) => {
     return c.json({ providers });
 });
 
-app.get("/usage", (c) => {
+app.get('/usage', (c) => {
     const now = Date.now();
     const perQueue = Object.fromEntries(
         Object.entries(queuesByProvider).map(([prov, qs]) => [
@@ -420,7 +424,7 @@ app.get("/usage", (c) => {
     });
 });
 
-app.get("/models", async (c) => {
+app.get('/models', async (c) => {
     try {
         const collectModels = async (
             resolver: () => Promise<KeyConfig[]>
@@ -431,7 +435,7 @@ app.get("/models", async (c) => {
                 for (const kc of cfgs) {
                     const ml = kc.modelLimits || {};
                     for (const m of Object.keys(ml)) {
-                        if (m && m !== "__default__") models.add(m);
+                        if (m && m !== '__default__') models.add(m);
                     }
                 }
                 return Array.from(models).sort();
@@ -450,28 +454,28 @@ app.get("/models", async (c) => {
             gemini: geminiModels,
         });
     } catch (error) {
-        console.error("Error in /usage/models endpoint:", error);
+        console.error('Error in /usage/models endpoint:', error);
         return c.json(
             {
-                error: "Internal server error",
+                error: 'Internal server error',
                 details:
-                    error instanceof Error ? error.message : "Unknown error",
+                    error instanceof Error ? error.message : 'Unknown error',
             },
             500
         );
     }
 });
 
-app.get("/estimate-tokens", async (c) => {
+app.get('/estimate-tokens', async (c) => {
     try {
-        const text = c.req.query("text") || "";
-        if (typeof text !== "string" || !text.trim().length) {
-            return c.json({ error: "text query parameter is required" }, 400);
+        const text = c.req.query('text') || '';
+        if (typeof text !== 'string' || !text.trim().length) {
+            return c.json({ error: 'text query parameter is required' }, 400);
         }
-        let model = c.req.query("model") || "mistral-small-latest";
+        let model = c.req.query('model') || 'mistral-small-latest';
         if (Array.isArray(model)) model = model[0];
-        if (typeof model !== "string" || !model.trim().length) {
-            model = "mistral-small-latest";
+        if (typeof model !== 'string' || !model.trim().length) {
+            model = 'mistral-small-latest';
         }
 
         let estimate = 0;
@@ -492,24 +496,24 @@ app.get("/estimate-tokens", async (c) => {
             estimatedTokens: estimate,
         });
     } catch (error) {
-        console.error("Error in /estimate-tokens endpoint:", error);
+        console.error('Error in /estimate-tokens endpoint:', error);
         return c.json(
             {
-                error: "Internal server error",
+                error: 'Internal server error',
                 details:
-                    error instanceof Error ? error.message : "Unknown error",
+                    error instanceof Error ? error.message : 'Unknown error',
             },
             500
         );
     }
 });
 
-app.post("/admin/reload-keys", async (c) => {
+app.post('/admin/reload-keys', async (c) => {
     try {
         const strategy = getEnvStrategy();
-        if (strategy === "env") {
+        if (strategy === 'env') {
             return c.json(
-                { error: "Reload not supported for ENV_STRATEGY=env" },
+                { error: 'Reload not supported for ENV_STRATEGY=env' },
                 400
             );
         }
@@ -517,29 +521,29 @@ app.post("/admin/reload-keys", async (c) => {
         let provider: string | undefined;
         try {
             provider = (
-                c.req.query("provider") ||
+                c.req.query('provider') ||
                 (await c.req.json().catch(() => ({})))?.provider
             )?.toString();
         } catch {
-            provider = c.req.query("provider")?.toString();
+            provider = c.req.query('provider')?.toString();
         }
         const providersToReload = (
-            (provider || "mistral").toLowerCase() === "all"
-                ? ["mistral", "gemini"]
-                : [(provider || "mistral").toLowerCase()]
-        ) as Array<"mistral" | "gemini">;
+            (provider || 'mistral').toLowerCase() === 'all'
+                ? ['mistral', 'gemini']
+                : [(provider || 'mistral').toLowerCase()]
+        ) as Array<'mistral' | 'gemini'>;
 
-        const rebuild = async (prov: "mistral" | "gemini") => {
+        const rebuild = async (prov: 'mistral' | 'gemini') => {
             let keyConfigs: KeyConfig[] = [];
-            if (prov === "mistral")
+            if (prov === 'mistral')
                 keyConfigs = await resolveMistralKeyConfigs();
-            if (prov === "gemini") keyConfigs = await resolveGeminiKeyConfigs();
+            if (prov === 'gemini') keyConfigs = await resolveGeminiKeyConfigs();
             clientsByProvider[prov] = [];
             queuesByProvider[prov] = [];
             for (const kc of keyConfigs) {
-                if (prov === "mistral")
+                if (prov === 'mistral')
                     clientsByProvider[prov].push(new MistralService(kc.key));
-                if (prov === "gemini")
+                if (prov === 'gemini')
                     clientsByProvider[prov].push(new GeminiService(kc.key));
                 if (
                     (kc.defaultLimits && kc.defaultLimits.length) ||
@@ -549,7 +553,7 @@ app.post("/admin/reload-keys", async (c) => {
                         new RequestQueuer({
                             defaultLimits: kc.defaultLimits,
                             modelLimits: kc.modelLimits,
-                            label: kc.label || "default",
+                            label: kc.label || 'default',
                             usageStrategy: USAGE_STRATEGY,
                         })
                     );
@@ -557,14 +561,14 @@ app.post("/admin/reload-keys", async (c) => {
                     queuesByProvider[prov].push(
                         new RequestQueuer({
                             fallbackDelayMs: kc.delayMs,
-                            label: kc.label || "default",
+                            label: kc.label || 'default',
                             usageStrategy: USAGE_STRATEGY,
                         })
                     );
                 } else {
                     queuesByProvider[prov].push(
                         new RequestQueuer({
-                            label: kc.label || "default",
+                            label: kc.label || 'default',
                             usageStrategy: USAGE_STRATEGY,
                         })
                     );
@@ -591,12 +595,12 @@ app.post("/admin/reload-keys", async (c) => {
             ),
         });
     } catch (error) {
-        console.error("Error reloading API keys:", error);
+        console.error('Error reloading API keys:', error);
         return c.json(
             {
-                error: "Failed to reload API keys",
+                error: 'Failed to reload API keys',
                 details:
-                    error instanceof Error ? error.message : "Unknown error",
+                    error instanceof Error ? error.message : 'Unknown error',
             },
             500
         );
@@ -615,34 +619,34 @@ async function bootstrap() {
                 mistralKeyConfigs.length
             } Mistral API key(s) with strategy: ${getEnvStrategy()}`
         );
-        clientsByProvider["mistral"] = [];
-        queuesByProvider["mistral"] = [];
+        clientsByProvider['mistral'] = [];
+        queuesByProvider['mistral'] = [];
         for (const kc of mistralKeyConfigs) {
-            clientsByProvider["mistral"].push(new MistralService(kc.key));
+            clientsByProvider['mistral'].push(new MistralService(kc.key));
             if (
                 (kc.defaultLimits && kc.defaultLimits.length) ||
                 (kc.modelLimits && Object.keys(kc.modelLimits).length)
             ) {
-                queuesByProvider["mistral"].push(
+                queuesByProvider['mistral'].push(
                     new RequestQueuer({
                         defaultLimits: kc.defaultLimits,
                         modelLimits: kc.modelLimits,
-                        label: kc.label || "default",
+                        label: kc.label || 'default',
                         usageStrategy: USAGE_STRATEGY,
                     })
                 );
             } else if (kc.delayMs != null) {
-                queuesByProvider["mistral"].push(
+                queuesByProvider['mistral'].push(
                     new RequestQueuer({
                         fallbackDelayMs: kc.delayMs,
-                        label: kc.label || "default",
+                        label: kc.label || 'default',
                         usageStrategy: USAGE_STRATEGY,
                     })
                 );
             } else {
-                queuesByProvider["mistral"].push(
+                queuesByProvider['mistral'].push(
                     new RequestQueuer({
-                        label: kc.label || "default",
+                        label: kc.label || 'default',
                         usageStrategy: USAGE_STRATEGY,
                     })
                 );
@@ -653,34 +657,34 @@ async function bootstrap() {
             const geminiKeyConfigs: KeyConfig[] =
                 await resolveGeminiKeyConfigs();
             if (geminiKeyConfigs.length) {
-                clientsByProvider["gemini"] = [];
-                queuesByProvider["gemini"] = [];
+                clientsByProvider['gemini'] = [];
+                queuesByProvider['gemini'] = [];
                 for (const kc of geminiKeyConfigs) {
-                    clientsByProvider["gemini"].push(new GeminiService(kc.key));
+                    clientsByProvider['gemini'].push(new GeminiService(kc.key));
                     if (
                         (kc.defaultLimits && kc.defaultLimits.length) ||
                         (kc.modelLimits && Object.keys(kc.modelLimits).length)
                     ) {
-                        queuesByProvider["gemini"].push(
+                        queuesByProvider['gemini'].push(
                             new RequestQueuer({
                                 defaultLimits: kc.defaultLimits,
                                 modelLimits: kc.modelLimits,
-                                label: kc.label || "default",
+                                label: kc.label || 'default',
                                 usageStrategy: USAGE_STRATEGY,
                             })
                         );
                     } else if (kc.delayMs != null) {
-                        queuesByProvider["gemini"].push(
+                        queuesByProvider['gemini'].push(
                             new RequestQueuer({
                                 fallbackDelayMs: kc.delayMs,
-                                label: kc.label || "default",
+                                label: kc.label || 'default',
                                 usageStrategy: USAGE_STRATEGY,
                             })
                         );
                     } else {
-                        queuesByProvider["gemini"].push(
+                        queuesByProvider['gemini'].push(
                             new RequestQueuer({
-                                label: kc.label || "default",
+                                label: kc.label || 'default',
                                 usageStrategy: USAGE_STRATEGY,
                             })
                         );
@@ -690,11 +694,11 @@ async function bootstrap() {
                     `Gemini provider enabled with ${geminiKeyConfigs.length} API key(s)`
                 );
             } else {
-                console.log("Gemini provider not configured");
+                console.log('Gemini provider not configured');
             }
         } catch (e) {
             console.log(
-                "Gemini provider not configured or failed to resolve keys:",
+                'Gemini provider not configured or failed to resolve keys:',
                 e instanceof Error ? e.message : e
             );
         }
@@ -703,7 +707,7 @@ async function bootstrap() {
         console.log(`Starting server on port ${port}`);
         serve({ port, fetch: app.fetch });
     } catch (e) {
-        console.error("Failed to start server:", e);
+        console.error('Failed to start server:', e);
         process.exit(1);
     }
 }

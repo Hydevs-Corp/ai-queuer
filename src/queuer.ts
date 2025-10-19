@@ -1,10 +1,10 @@
-import { estimateTokenCount } from "tokenx";
+import { estimateTokenCount } from 'tokenx';
 import {
     RAMUsageStrategy,
     pocketbaseUsageStrategy,
     UsageStrategy,
     UsageBucket,
-} from "./usage-strategy";
+} from './usage-strategy';
 
 export interface QueueItem<T = any> {
     id: string;
@@ -15,7 +15,7 @@ export interface QueueItem<T = any> {
     reject: (error: Error) => void;
 }
 
-export type LimitType = "RPS" | "RPm" | "RPD" | "TPM" | "TPm" | "RPM";
+export type LimitType = 'RPS' | 'RPm' | 'RPD' | 'TPM' | 'TPm' | 'RPM';
 
 export interface RateLimitConfig {
     type: LimitType;
@@ -27,7 +27,7 @@ export interface QueuerOptions {
     modelLimits?: Record<string, RateLimitConfig[]>;
     fallbackDelayMs?: number;
     label?: string;
-    usageStrategy?: "RAM" | "pocketbase";
+    usageStrategy?: 'RAM' | 'pocketbase';
 }
 
 export class RequestQueuer {
@@ -53,8 +53,8 @@ export class RequestQueuer {
             minuteTokenCount: 0,
             minuteTokenWindowStart: Date.now(),
         });
-        const strategy = (options.usageStrategy || "RAM").toLowerCase();
-        if (strategy === "pocketbase") {
+        const strategy = (options.usageStrategy || 'RAM').toLowerCase();
+        if (strategy === 'pocketbase') {
             this.usage = new pocketbaseUsageStrategy(makeInitial, {
                 label: options.label,
             });
@@ -268,33 +268,33 @@ export class RequestQueuer {
 
         let waitMs = 0;
         for (const l of active) {
-            if (l.type === "RPS") {
+            if (l.type === 'RPS') {
                 if (usage.secondWindowTimestamps.length >= l.limit) {
                     const earliest = usage.secondWindowTimestamps[0];
                     waitMs = Math.max(waitMs, 1000 - (now - earliest));
                 }
-            } else if (l.type === "RPm") {
+            } else if (l.type === 'RPm') {
                 if (usage.minuteWindowTimestamps.length >= l.limit) {
                     const earliest = usage.minuteWindowTimestamps[0];
                     waitMs = Math.max(waitMs, 60_000 - (now - earliest));
                 }
-            } else if (l.type === "RPD") {
+            } else if (l.type === 'RPD') {
                 if (usage.dayWindowTimestamps.length >= l.limit) {
                     const earliest = usage.dayWindowTimestamps[0];
                     waitMs = Math.max(waitMs, 86_400_000 - (now - earliest));
                 }
-            } else if (l.type === "TPM") {
+            } else if (l.type === 'TPM') {
                 if (
                     usage.monthTokenCount + Math.max(0, tokensNeeded) >
                     l.limit
                 ) {
                     waitMs = Math.max(waitMs, usage.monthTokenResetAt - now);
                 }
-            } else if (l.type === "RPM") {
+            } else if (l.type === 'RPM') {
                 if (usage.monthRequestCount + 1 > l.limit) {
                     waitMs = Math.max(waitMs, usage.monthRequestResetAt - now);
                 }
-            } else if (l.type === "TPm") {
+            } else if (l.type === 'TPm') {
                 const windowAge = now - usage.minuteTokenWindowStart;
                 if (windowAge >= 60_000) {
                 } else if (
@@ -352,7 +352,7 @@ export class RequestQueuer {
             });
         }
 
-        const getKey = (m?: string) => (m ? m : "__default__");
+        const getKey = (m?: string) => (m ? m : '__default__');
         const getBucketSim = (m?: string) => {
             const key = getKey(m);
             let b = usageSim.get(key);
@@ -420,33 +420,33 @@ export class RequestQueuer {
 
             let waitMs = 0;
             for (const l of limits) {
-                if (l.type === "RPS") {
+                if (l.type === 'RPS') {
                     if (usage.secondWindowTimestamps.length >= l.limit) {
                         const earliest = usage.secondWindowTimestamps[0];
                         waitMs = Math.max(waitMs, 1000 - (t - earliest));
                     }
-                } else if (l.type === "RPm") {
+                } else if (l.type === 'RPm') {
                     if (usage.minuteWindowTimestamps.length >= l.limit) {
                         const earliest = usage.minuteWindowTimestamps[0];
                         waitMs = Math.max(waitMs, 60_000 - (t - earliest));
                     }
-                } else if (l.type === "RPD") {
+                } else if (l.type === 'RPD') {
                     if (usage.dayWindowTimestamps.length >= l.limit) {
                         const earliest = usage.dayWindowTimestamps[0];
                         waitMs = Math.max(waitMs, 86_400_000 - (t - earliest));
                     }
-                } else if (l.type === "TPM") {
+                } else if (l.type === 'TPM') {
                     if (usage.monthTokenCount + Math.max(0, tokens) > l.limit) {
                         waitMs = Math.max(waitMs, usage.monthTokenResetAt - t);
                     }
-                } else if (l.type === "RPM") {
+                } else if (l.type === 'RPM') {
                     if (usage.monthRequestCount + 1 > l.limit) {
                         waitMs = Math.max(
                             waitMs,
                             usage.monthRequestResetAt - t
                         );
                     }
-                } else if (l.type === "TPm") {
+                } else if (l.type === 'TPm') {
                     const windowAge = t - usage.minuteTokenWindowStart;
                     if (windowAge >= 60_000) {
                     } else if (
@@ -658,7 +658,7 @@ export class RequestQueuer {
     }
 
     private getUsageBucket(modelName?: string): UsageBucket {
-        const key = modelName || "__default__";
+        const key = modelName || '__default__';
         return this.usage.getBucket(key);
     }
 

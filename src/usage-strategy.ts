@@ -79,30 +79,30 @@ export class pocketbaseUsageStrategy implements UsageStrategy {
     ) {
         const getEnv = (k: string, fb?: string) =>
             process.env[k] ?? (fb as any);
-        this.url = (opts.url ?? getEnv("PB_URL"))?.replace(/\/$/, "") ?? "";
-        this.username = opts.username ?? getEnv("PB_USERNAME") ?? "";
-        this.password = opts.password ?? getEnv("PB_PASSWORD") ?? "";
+        this.url = (opts.url ?? getEnv('PB_URL'))?.replace(/\/$/, '') ?? '';
+        this.username = opts.username ?? getEnv('PB_USERNAME') ?? '';
+        this.password = opts.password ?? getEnv('PB_PASSWORD') ?? '';
         this.collection =
             opts.collection ??
-            getEnv("PB_USAGE_COLLECTION", "usage") ??
-            "usage";
+            getEnv('PB_USAGE_COLLECTION', 'usage') ??
+            'usage';
         this.label = opts.label;
         const autoMs = opts.autoIntervalMs ?? 15_000;
 
         if (!this.url || !this.username || !this.password) {
             throw new Error(
-                "pocketbaseUsageStrategy requires PB_URL, PB_USERNAME, PB_PASSWORD"
+                'pocketbaseUsageStrategy requires PB_URL, PB_USERNAME, PB_PASSWORD'
             );
         }
         // Load existing records synchronously in background; callers can use immediately with new buckets
         this.bootstrap().catch((e) => {
-            console.error("pocketbase usage bootstrap failed:", e);
+            console.error('pocketbase usage bootstrap failed:', e);
         });
 
         if (autoMs && Number.isFinite(autoMs) && autoMs > 0) {
             this.timer = setInterval(() => {
                 this.persist().catch((e) =>
-                    console.error("PB persist failed:", e)
+                    console.error('PB persist failed:', e)
                 );
             }, autoMs);
         }
@@ -136,7 +136,7 @@ export class pocketbaseUsageStrategy implements UsageStrategy {
         // Present entries without label prefix to the caller
         for (const [k, v] of this.map.entries()) {
             const plain =
-                this.label && k.startsWith(this.label + "::")
+                this.label && k.startsWith(this.label + '::')
                     ? k.slice(this.label.length + 2)
                     : k;
             yield [plain, v];
@@ -152,7 +152,7 @@ export class pocketbaseUsageStrategy implements UsageStrategy {
                 headers: { Authorization: `Bearer ${this.auth!.token}` },
             });
             if (!res.ok) {
-                const t = await res.text().catch(() => "");
+                const t = await res.text().catch(() => '');
                 throw new Error(
                     `PB list usage failed (${res.status}): ${
                         t || res.statusText
@@ -167,24 +167,24 @@ export class pocketbaseUsageStrategy implements UsageStrategy {
                 : [];
             for (const it of items) {
                 const key =
-                    typeof it?.key === "string"
+                    typeof it?.key === 'string'
                         ? (it.key as string)
                         : undefined;
                 const data = it?.data;
                 if (!key || !data) continue;
                 // Only load records that belong to this label (or all if no label)
                 if (this.label) {
-                    if (!key.startsWith(this.label + "::")) continue;
+                    if (!key.startsWith(this.label + '::')) continue;
                 }
                 const bucket: UsageBucket | undefined = this.parseBucket(data);
                 if (bucket) {
                     this.map.set(key, bucket);
-                    if (typeof it?.id === "string")
+                    if (typeof it?.id === 'string')
                         this.recordIds.set(key, it.id);
                 }
             }
         } catch (e) {
-            console.error("pocketbase usage load error:", e);
+            console.error('pocketbase usage load error:', e);
         }
     }
 
@@ -223,24 +223,24 @@ export class pocketbaseUsageStrategy implements UsageStrategy {
     private async ensureAuth(): Promise<void> {
         if (this.auth?.token) return;
         const authUrl = `${this.url}/api/collections/${
-            process.env.PB_USER_COLLECTION ?? "users"
+            process.env.PB_USER_COLLECTION ?? 'users'
         }/auth-with-password`;
         const res = await fetch(authUrl, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
                 identity: this.username,
                 password: this.password,
             }),
         });
         if (!res.ok) {
-            const t = await res.text().catch(() => "");
+            const t = await res.text().catch(() => '');
             throw new Error(
                 `pocketbase auth failed (${res.status}): ${t || res.statusText}`
             );
         }
         const j = (await res.json()) as { token?: string };
-        if (!j.token) throw new Error("pocketbase auth response missing token");
+        if (!j.token) throw new Error('pocketbase auth response missing token');
         this.auth = { token: j.token };
     }
 
@@ -248,7 +248,7 @@ export class pocketbaseUsageStrategy implements UsageStrategy {
         if (this.disposed) return;
         await this.ensureAuth();
         const headers = {
-            "Content-Type": "application/json",
+            'Content-Type': 'application/json',
             Authorization: `Bearer ${this.auth!.token}`,
         } as Record<string, string>;
 
@@ -263,7 +263,7 @@ export class pocketbaseUsageStrategy implements UsageStrategy {
                 if (recId) {
                     const url = `${this.url}/api/collections/${this.collection}/records/${recId}`;
                     const res = await fetch(url, {
-                        method: "PATCH",
+                        method: 'PATCH',
                         headers,
                         body,
                     });
@@ -275,7 +275,7 @@ export class pocketbaseUsageStrategy implements UsageStrategy {
                     await this.createRecord(headers, key, bucket);
                 }
             } catch (e) {
-                console.error("pocketbase persist error for", key, e);
+                console.error('pocketbase persist error for', key, e);
             }
         }
     }
@@ -287,17 +287,17 @@ export class pocketbaseUsageStrategy implements UsageStrategy {
     ) {
         const url = `${this.url}/api/collections/${this.collection}/records`;
         const res = await fetch(url, {
-            method: "POST",
+            method: 'POST',
             headers,
             body: JSON.stringify({ key, data: bucket }),
         });
         if (res.ok) {
             try {
                 const j: any = await res.json();
-                if (typeof j?.id === "string") this.recordIds.set(key, j.id);
+                if (typeof j?.id === 'string') this.recordIds.set(key, j.id);
             } catch {}
         } else {
-            const t = await res.text().catch(() => "");
+            const t = await res.text().catch(() => '');
             console.error(
                 `pocketbase create usage failed (${res.status}): ${
                     t || res.statusText
