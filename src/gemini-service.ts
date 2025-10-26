@@ -1,10 +1,5 @@
 import { GoogleGenerativeAI } from '@google/generative-ai';
-import {
-    ChatMessage,
-    ChatQuery,
-    ImageAnalysisQuery,
-    LLMService,
-} from './types';
+import { ChatQuery, ImageAnalysisQuery, LLMService } from './types';
 
 export class GeminiService implements LLMService {
     private client: GoogleGenerativeAI;
@@ -32,13 +27,15 @@ export class GeminiService implements LLMService {
     async analyzeImage(request: ImageAnalysisQuery): Promise<string> {
         const modelName = request.model ?? 'gemini-1.5-flash';
         const model = this.client.getGenerativeModel({ model: modelName });
+        const prompt =
+            request.prompt ?? 'Analyze this image and describe what you see.';
         const res = await model.generateContent({
             contents: [
                 {
                     role: 'user',
                     parts: [
                         {
-                            text: 'Analyze this image and describe what you see.',
+                            text: prompt,
                         },
                         {
                             inlineData: {

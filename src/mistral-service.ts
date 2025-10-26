@@ -38,6 +38,9 @@ export class MistralService implements LLMService {
     async analyzeImage(request: ImageAnalysisQuery): Promise<string> {
         try {
             const model = request.model || 'magistral-small-2509';
+            const prompt =
+                request.prompt ??
+                'Analyze this image and describe what you see.';
 
             const response = await this.client.chat.complete({
                 model: model,
@@ -47,7 +50,7 @@ export class MistralService implements LLMService {
                         content: [
                             {
                                 type: 'text',
-                                text: 'Analyze this image and describe what you see.',
+                                text: prompt,
                             },
                             {
                                 type: 'image_url',

@@ -36,6 +36,7 @@ export interface ChatQuery {
 
 export interface ImageAnalysisQuery {
     image: string;
+    prompt?: string;
     model?: string;
     options?: RequestOptions;
 }
