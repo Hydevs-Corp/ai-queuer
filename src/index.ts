@@ -69,6 +69,25 @@ function parseTargets<T extends { model?: any }>(
     return [raw as ModelTarget];
 }
 
+async function loadLangchainKeyConfigs(prov: string): Promise<KeyConfig[]> {
+    if (prov === 'gemini') {
+        return await resolveGeminiKeyConfigs();
+    }
+    const envVar = `${prov.toUpperCase()}_API_KEYS`;
+    const singleEnvVar = `${prov.toUpperCase()}_API_KEY`;
+    const raw = (
+        process.env[envVar] ||
+        process.env[singleEnvVar] ||
+        ''
+    ).toString();
+    if (!raw || !raw.trim()) return [];
+    const keys = raw.includes(',') ? raw.split(',') : [raw];
+    return keys
+        .map((k) => (k || '').toString().trim())
+        .filter(Boolean)
+        .map((k) => ({ key: k, delayMs: QUEUE_DELAY_MS } as KeyConfig));
+}
+
 function chooseQueue(
     provider: ProviderName,
     model: string,
@@ -430,11 +449,11 @@ app.get('/usage', (c) => {
 
 app.get('/models', async (c) => {
     try {
-        const collectModels = async (
-            resolver: () => Promise<KeyConfig[]>
+        const collectModelsFromKeyConfigs = async (
+            cfgResolver: () => Promise<KeyConfig[]>
         ): Promise<string[]> => {
             try {
-                const cfgs = await resolver();
+                const cfgs = await cfgResolver();
                 const models = new Set<string>();
                 for (const kc of cfgs) {
                     const ml = kc.modelLimits || {};
@@ -448,14 +467,21 @@ app.get('/models', async (c) => {
             }
         };
 
-        const [mistralModels, geminiModels] = await Promise.all([
-            collectModels(resolveMistralKeyConfigs),
-            collectModels(resolveGeminiKeyConfigs),
-        ]);
+        const mistralModels = await collectModelsFromKeyConfigs(
+            resolveMistralKeyConfigs
+        );
+
+        const langchainModelsByProvider: Record<string, string[]> = {};
+        for (const prov of LANGCHAIN_PROVIDERS) {
+            const models = await collectModelsFromKeyConfigs(() =>
+                loadLangchainKeyConfigs(prov)
+            );
+            langchainModelsByProvider[prov] = models;
+        }
 
         return c.json({
             mistral: mistralModels,
-            gemini: geminiModels,
+            langchain: langchainModelsByProvider,
         });
     } catch (error) {
         console.error('Error in /usage/models endpoint:', error);
@@ -541,9 +567,11 @@ app.post('/admin/reload-keys', async (c) => {
             prov: 'mistral' | 'gemini' | 'claude' | 'openai'
         ) => {
             let keyConfigs: KeyConfig[] = [];
-            if (prov === 'mistral')
+            if (prov === 'mistral') {
                 keyConfigs = await resolveMistralKeyConfigs();
-            if (prov === 'gemini') keyConfigs = await resolveGeminiKeyConfigs();
+            } else if (LANGCHAIN_PROVIDERS.includes(prov)) {
+                keyConfigs = await loadLangchainKeyConfigs(prov);
+            }
             clientsByProvider[prov] = [];
             queuesByProvider[prov] = [];
             for (const kc of keyConfigs) {
@@ -662,19 +690,25 @@ async function bootstrap() {
             }
         }
 
+        // === LangChain providers bootstrap (gemini, claude, openai, etc.) ===
         try {
-            const geminiKeyConfigs: KeyConfig[] =
-                await resolveGeminiKeyConfigs();
-            if (geminiKeyConfigs.length) {
-                clientsByProvider['gemini'] = [];
-                queuesByProvider['gemini'] = [];
-                for (const kc of geminiKeyConfigs) {
-                    clientsByProvider['gemini'].push(new GeminiService(kc.key));
+            for (const prov of LANGCHAIN_PROVIDERS) {
+                const keyConfigs = await loadLangchainKeyConfigs(prov);
+                if (!keyConfigs || !keyConfigs.length) {
+                    console.log(`${prov} provider not configured`);
+                    continue;
+                }
+                clientsByProvider[prov] = [];
+                queuesByProvider[prov] = [];
+                for (const kc of keyConfigs) {
+                    clientsByProvider[prov].push(
+                        new LangchainService(prov as any, kc.key)
+                    );
                     if (
                         (kc.defaultLimits && kc.defaultLimits.length) ||
                         (kc.modelLimits && Object.keys(kc.modelLimits).length)
                     ) {
-                        queuesByProvider['gemini'].push(
+                        queuesByProvider[prov].push(
                             new RequestQueuer({
                                 defaultLimits: kc.defaultLimits,
                                 modelLimits: kc.modelLimits,
@@ -683,7 +717,7 @@ async function bootstrap() {
                             })
                         );
                     } else if (kc.delayMs != null) {
-                        queuesByProvider['gemini'].push(
+                        queuesByProvider[prov].push(
                             new RequestQueuer({
                                 fallbackDelayMs: kc.delayMs,
                                 label: kc.label || 'default',
@@ -691,7 +725,7 @@ async function bootstrap() {
                             })
                         );
                     } else {
-                        queuesByProvider['gemini'].push(
+                        queuesByProvider[prov].push(
                             new RequestQueuer({
                                 label: kc.label || 'default',
                                 usageStrategy: USAGE_STRATEGY,
@@ -700,14 +734,12 @@ async function bootstrap() {
                     }
                 }
                 console.log(
-                    `Gemini provider enabled with ${geminiKeyConfigs.length} API key(s)`
+                    `${prov} provider enabled with ${keyConfigs.length} API key(s)`
                 );
-            } else {
-                console.log('Gemini provider not configured');
             }
         } catch (e) {
             console.log(
-                'Gemini provider not configured or failed to resolve keys:',
+                'LangChain providers not configured or failed to resolve keys:',
                 e instanceof Error ? e.message : e
             );
         }
