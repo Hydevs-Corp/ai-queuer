@@ -1,5 +1,5 @@
 import OpenAI from 'openai';
-import { ChatQuery, ImageAnalysisQuery, LLMService } from './types';
+import { ChatQuery, ImageAnalysisQuery, LLMService } from '../types';
 
 export class OpenAIService implements LLMService {
     private client: OpenAI;

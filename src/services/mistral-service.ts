@@ -1,6 +1,6 @@
 import { Mistral } from '@mistralai/mistralai';
 import { TextChunk } from '@mistralai/mistralai/models/components';
-import { ChatQuery, ImageAnalysisQuery, LLMService } from './types';
+import { ChatQuery, ImageAnalysisQuery, LLMService } from '../types';
 
 export class MistralService implements LLMService {
     private client: Mistral;

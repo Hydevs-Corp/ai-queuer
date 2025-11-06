@@ -1,5 +1,5 @@
 import { GoogleGenerativeAI } from '@google/generative-ai';
-import { ChatQuery, ImageAnalysisQuery, LLMService } from './types';
+import { ChatQuery, ImageAnalysisQuery, LLMService } from '../types';
 
 export class GeminiService implements LLMService {
     private client: GoogleGenerativeAI;

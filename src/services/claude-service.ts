@@ -1,6 +1,6 @@
 import Anthropic from '@anthropic-ai/sdk';
 import type { MessageParam } from '@anthropic-ai/sdk/resources/messages';
-import { ChatQuery, ImageAnalysisQuery, LLMService } from './types';
+import { ChatQuery, ImageAnalysisQuery, LLMService } from '../types';
 
 export class ClaudeService implements LLMService {
     private client: Anthropic;
