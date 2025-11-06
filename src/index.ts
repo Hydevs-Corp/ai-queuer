@@ -13,8 +13,8 @@ import {
     resolveMistralApiKey,
     resolveMistralKeyConfigs,
 } from './env';
-import { GeminiService } from './gemini-service';
-import { MistralService } from './mistral-service';
+import { GeminiService } from './services/gemini-service';
+import { MistralService } from './services/mistral-service';
 import { RequestQueuer } from './queuer';
 import {
     AnalyzeImageRequestBody,
@@ -23,6 +23,8 @@ import {
     ModelTarget,
     ProviderName,
 } from './types';
+import { ClaudeService } from './services/claude-service';
+import { OpenAIService } from './services/openai-service';
 
 dotenv.config({ quiet: true });
 
@@ -529,11 +531,13 @@ app.post('/admin/reload-keys', async (c) => {
         }
         const providersToReload = (
             (provider || 'mistral').toLowerCase() === 'all'
-                ? ['mistral', 'gemini']
+                ? ['mistral', 'gemini', 'claude', 'openai']
                 : [(provider || 'mistral').toLowerCase()]
-        ) as Array<'mistral' | 'gemini'>;
+        ) as Array<'mistral' | 'gemini' | 'claude' | 'openai'>;
 
-        const rebuild = async (prov: 'mistral' | 'gemini') => {
+        const rebuild = async (
+            prov: 'mistral' | 'gemini' | 'claude' | 'openai'
+        ) => {
             let keyConfigs: KeyConfig[] = [];
             if (prov === 'mistral')
                 keyConfigs = await resolveMistralKeyConfigs();
@@ -545,6 +549,10 @@ app.post('/admin/reload-keys', async (c) => {
                     clientsByProvider[prov].push(new MistralService(kc.key));
                 if (prov === 'gemini')
                     clientsByProvider[prov].push(new GeminiService(kc.key));
+                if (prov === 'claude')
+                    clientsByProvider[prov].push(new ClaudeService(kc.key));
+                if (prov === 'openai')
+                    clientsByProvider[prov].push(new OpenAIService(kc.key));
                 if (
                     (kc.defaultLimits && kc.defaultLimits.length) ||
                     (kc.modelLimits && Object.keys(kc.modelLimits).length)
