@@ -13,9 +13,13 @@ import {
     resolveMistralApiKey,
     resolveMistralKeyConfigs,
 } from './env';
-import { GeminiService } from './services/gemini-service';
-import { MistralService } from './services/mistral-service';
 import { RequestQueuer } from './queuer';
+import { GeminiService } from './services/gemini-service';
+import {
+    LANGCHAIN_PROVIDERS,
+    LangchainService,
+} from './services/langchain-service';
+import { MistralService } from './services/mistral-service';
 import {
     AnalyzeImageRequestBody,
     AskRequestBody,
@@ -23,8 +27,6 @@ import {
     ModelTarget,
     ProviderName,
 } from './types';
-import { ClaudeService } from './services/claude-service';
-import { OpenAIService } from './services/openai-service';
 
 dotenv.config({ quiet: true });
 
@@ -545,14 +547,13 @@ app.post('/admin/reload-keys', async (c) => {
             clientsByProvider[prov] = [];
             queuesByProvider[prov] = [];
             for (const kc of keyConfigs) {
-                if (prov === 'mistral')
+                if (prov === 'mistral') {
                     clientsByProvider[prov].push(new MistralService(kc.key));
-                if (prov === 'gemini')
-                    clientsByProvider[prov].push(new GeminiService(kc.key));
-                if (prov === 'claude')
-                    clientsByProvider[prov].push(new ClaudeService(kc.key));
-                if (prov === 'openai')
-                    clientsByProvider[prov].push(new OpenAIService(kc.key));
+                } else if (LANGCHAIN_PROVIDERS.includes(prov)) {
+                    clientsByProvider[prov].push(
+                        new LangchainService(prov, kc.key)
+                    );
+                }
                 if (
                     (kc.defaultLimits && kc.defaultLimits.length) ||
                     (kc.modelLimits && Object.keys(kc.modelLimits).length)
